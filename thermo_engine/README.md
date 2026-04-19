@@ -1,6 +1,9 @@
 # THERMO_ENGINE
 
-THERMO_ENGINE is a scientific full-stack web application for thermodynamic modeling of non-ideal mixtures. It provides vapor pressure calculations, activity and fugacity models, vapor-liquid equilibrium workflows, volumetric properties, interactive Plotly charts, and a small molecule parameter manager.
+**Author:** ## 💡 Author
+
+- ARIJ BENATEMNA
+- THERMO_ENGINE Team
 
 ## Stack
 
