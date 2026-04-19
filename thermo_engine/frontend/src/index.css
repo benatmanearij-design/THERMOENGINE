@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(79, 70, 229, 0.28), transparent 28%),
+    radial-gradient(circle at 85% 12%, rgba(6, 182, 212, 0.18), transparent 20%),
+    linear-gradient(180deg, #030712 0%, #0f172a 100%);
+  color: #e2e8f0;
+}
+
+.grid-glow {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+
+.panel {
+  @apply rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-scientific;
+}
+
+.field {
+  @apply w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-cyan-400;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-3 font-semibold text-white transition hover:brightness-110;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-slate-100 transition hover:bg-white/10;
+}
+
