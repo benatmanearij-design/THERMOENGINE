@@ -1,6 +1,6 @@
 # THERMO_ENGINE
 
-**Author:** ## 💡 Author
+**Author:** 
 
 - ARIJ BENATEMNA
 - THERMO_ENGINE Team
@@ -42,7 +42,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-The API will start on `http://127.0.0.1:5000`.
+The API will start on `http://127.0.0.1:9000`.
 
 ## Frontend Setup
 
@@ -52,7 +52,7 @@ npm install
 npm run dev
 ```
 
-The frontend expects the backend on `http://127.0.0.1:5000`.
+The frontend expects the backend on `http://127.0.0.1:9000`.
 
 ## Running Tests
 
@@ -66,7 +66,7 @@ pytest
 ### Antoine vapor pressure
 
 ```bash
-curl -X POST http://127.0.0.1:5000/api/antoine ^
+curl -X POST http://127.0.0.1:9000/api/antoine ^
   -H "Content-Type: application/json" ^
   -d "{\"component_id\":1,\"temperature_c\":100}"
 ```
@@ -74,7 +74,7 @@ curl -X POST http://127.0.0.1:5000/api/antoine ^
 ### Activity coefficient
 
 ```bash
-curl -X POST http://127.0.0.1:5000/api/pressure/activity ^
+curl -X POST http://127.0.0.1:9000/api/pressure/activity ^
   -H "Content-Type: application/json" ^
   -d "{\"model\":\"NRTL\",\"temperature_c\":78,\"x\":[0.4,0.6],\"component_ids\":[2,1]}"
 ```
@@ -82,7 +82,7 @@ curl -X POST http://127.0.0.1:5000/api/pressure/activity ^
 ### Bubble pressure
 
 ```bash
-curl -X POST http://127.0.0.1:5000/api/vle/bubble-pressure ^
+curl -X POST http://127.0.0.1:9000/api/vle/bubble-pressure ^
   -H "Content-Type: application/json" ^
   -d "{\"temperature_c\":78,\"component_ids\":[2,1],\"x\":[0.5,0.5],\"activity_model\":\"NRTL\",\"eos_model\":\"PR\"}"
 ```
@@ -90,7 +90,7 @@ curl -X POST http://127.0.0.1:5000/api/vle/bubble-pressure ^
 ### Export CSV-ready results
 
 ```bash
-curl -X POST http://127.0.0.1:5000/api/export/csv ^
+curl -X POST http://127.0.0.1:9000/api/export/csv ^
   -H "Content-Type: application/json" ^
   -d "{\"filename\":\"bubble_results.csv\",\"rows\":[{\"x1\":0.1,\"pressure_bar\":0.52},{\"x1\":0.2,\"pressure_bar\":0.61}]}"
 ```

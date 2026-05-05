@@ -15,6 +15,7 @@ except Exception:  # pragma: no cover - fallback for environments without flask-
 
 from antoine import calculate_vapor_pressure
 from db import (
+    DuplicateMoleculeNameError,
     create_molecule,
     delete_molecule,
     get_parameter_snapshot,
@@ -280,6 +281,8 @@ def molecule_detail(molecule_id: int) -> Response:
 @app.errorhandler(Exception)
 def handle_error(error: Exception) -> tuple[Response, int]:
     app.logger.error(f"Error processed: {str(error)}", exc_info=True)
+    if isinstance(error, DuplicateMoleculeNameError):
+        return jsonify({"status": "error", "message": str(error)}), 409
     return jsonify({"status": "error", "message": str(error)}), 400
 
 

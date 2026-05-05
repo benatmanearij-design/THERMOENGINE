@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 
-from db import get_antoine_constants
+from db import get_antoine_constants, get_molecule
 
 
 MMHG_TO_BAR = 0.001333223684
@@ -19,9 +19,11 @@ def psat_antoine(temperature_c: float, a: float, b: float, c: float, unit: str =
 
 def calculate_vapor_pressure(component_id: int, temperature_c: float, unit: str = "bar") -> dict:
     constants = get_antoine_constants(component_id)
+    molecule = get_molecule(component_id)
     pressure = psat_antoine(temperature_c, constants["a"], constants["b"], constants["c"], unit=unit)
     return {
         "component_id": component_id,
+        "component_name": molecule["name"] if molecule else f"Molecule {component_id}",
         "temperature_c": temperature_c,
         "pressure": pressure,
         "unit": unit,
@@ -42,4 +44,3 @@ def relative_error(reference: float, candidate: float) -> float:
     if math.isclose(reference, 0.0):
         return abs(candidate)
     return abs(candidate - reference) / abs(reference)
-

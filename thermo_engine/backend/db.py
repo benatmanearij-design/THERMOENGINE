@@ -58,6 +58,10 @@ SEED_MOLECULES = [
     {"name": "Methanol", "formula": "CH4O", "tc": 512.60, "pc_bar": 80.90, "omega": 0.565, "zc": 0.224, "antoine": (8.08097, 1582.27, 239.726, 10.0, 90.0), "uniquac": (1.4311, 1.432)},
     {"name": "Benzene", "formula": "C6H6", "tc": 562.02, "pc_bar": 48.90, "omega": 0.212, "zc": 0.271, "antoine": (6.90565, 1211.033, 220.790, 7.0, 80.0), "uniquac": (3.1878, 2.400)},
     {"name": "Acetone", "formula": "C3H6O", "tc": 508.10, "pc_bar": 47.00, "omega": 0.304, "zc": 0.233, "antoine": (7.11714, 1210.595, 229.664, -10.0, 80.0), "uniquac": (2.5735, 2.336)},
+    {"name": "Toluene", "formula": "C7H8", "tc": 591.75, "pc_bar": 41.06, "omega": 0.263, "zc": 0.264, "antoine": (6.95464, 1344.8, 219.48, 6.0, 126.0), "uniquac": (4.0026, 3.328)},
+    {"name": "n-Hexane", "formula": "C6H14", "tc": 507.60, "pc_bar": 30.25, "omega": 0.301, "zc": 0.266, "antoine": (6.8763, 1171.53, 224.366, -20.0, 110.0), "uniquac": (3.856, 3.316)},
+    {"name": "Isopropanol", "formula": "C3H8O", "tc": 508.30, "pc_bar": 47.64, "omega": 0.665, "zc": 0.248, "antoine": (8.11778, 1580.92, 219.61, 12.0, 89.0), "uniquac": (2.7791, 2.508)},
+    {"name": "Chloroform", "formula": "CHCl3", "tc": 536.40, "pc_bar": 53.72, "omega": 0.221, "zc": 0.293, "antoine": (6.95465, 1170.966, 226.232, -20.0, 80.0), "uniquac": (3.0878, 2.52)},
 ]
 
 
@@ -65,6 +69,8 @@ SEED_NRTL = [
     ("Water", "Ethanol", 342.12, -95.10, 0.30),
     ("Water", "Methanol", 181.20, -54.40, 0.30),
     ("Benzene", "Acetone", 120.50, 95.70, 0.28),
+    ("Water", "Isopropanol", 420.15, -110.30, 0.30),
+    ("Toluene", "n-Hexane", 35.00, 25.00, 0.20),
 ]
 
 
@@ -79,21 +85,28 @@ def rows_to_dicts(rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+class DuplicateMoleculeNameError(ValueError):
+    pass
+
+
 def initialize_database() -> None:
     connection = get_connection()
     try:
         connection.executescript(SCHEMA_SQL)
-        total = connection.execute("SELECT COUNT(*) AS total FROM molecules").fetchone()["total"]
-        if total == 0:
-            seed_database(connection)
+        seed_database(connection)
         connection.commit()
     finally:
         connection.close()
 
 
 def seed_database(connection: sqlite3.Connection) -> None:
-    molecule_ids: dict[str, int] = {}
+    existing_rows = connection.execute("SELECT id, name FROM molecules").fetchall()
+    molecule_ids = {row["name"]: row["id"] for row in existing_rows}
+
     for item in SEED_MOLECULES:
+        if item["name"] in molecule_ids:
+            continue
+
         cursor = connection.execute(
             """
             INSERT INTO molecules (name, formula, tc, pc_bar, omega, zc)
@@ -101,31 +114,57 @@ def seed_database(connection: sqlite3.Connection) -> None:
             """,
             (item["name"], item["formula"], item["tc"], item["pc_bar"], item["omega"], item["zc"]),
         )
-        molecule_id = cursor.lastrowid
-        molecule_ids[item["name"]] = molecule_id
+        molecule_ids[item["name"]] = cursor.lastrowid
         connection.execute(
             """
             INSERT INTO antoine_constants (molecule_id, a, b, c, t_min_c, t_max_c)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (molecule_id, *item["antoine"]),
+            (molecule_ids[item["name"]], *item["antoine"]),
         )
         connection.execute(
             """
             INSERT INTO uniquac_parameters (molecule_id, r, q)
             VALUES (?, ?, ?)
             """,
+            (molecule_ids[item["name"]], *item["uniquac"]),
+        )
+
+    for item in SEED_MOLECULES:
+        molecule_id = molecule_ids[item["name"]]
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO antoine_constants (molecule_id, a, b, c, t_min_c, t_max_c)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (molecule_id, *item["antoine"]),
+        )
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO uniquac_parameters (molecule_id, r, q)
+            VALUES (?, ?, ?)
+            """,
             (molecule_id, *item["uniquac"]),
         )
 
+    existing_pairs = {
+        (row["component_1_id"], row["component_2_id"])
+        for row in connection.execute("SELECT component_1_id, component_2_id FROM nrtl_parameters").fetchall()
+    }
+
     for comp1, comp2, a12, a21, alpha in SEED_NRTL:
+        pair = (molecule_ids[comp1], molecule_ids[comp2])
+        reverse_pair = (pair[1], pair[0])
+        if pair in existing_pairs or reverse_pair in existing_pairs:
+            continue
         connection.execute(
             """
             INSERT INTO nrtl_parameters (component_1_id, component_2_id, a12, a21, alpha)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (molecule_ids[comp1], molecule_ids[comp2], a12, a21, alpha),
+            (pair[0], pair[1], a12, a21, alpha),
         )
+        existing_pairs.add(pair)
 
 
 def list_molecules() -> list[dict[str, Any]]:
@@ -179,7 +218,45 @@ def get_molecule(molecule_id: int) -> dict[str, Any] | None:
         connection.close()
 
 
+def get_molecule_by_name(name: str) -> dict[str, Any] | None:
+    connection = get_connection()
+    try:
+        row = connection.execute(
+            """
+            SELECT
+                m.*,
+                a.a AS antoine_a,
+                a.b AS antoine_b,
+                a.c AS antoine_c,
+                a.t_min_c AS t_min_c,
+                a.t_max_c AS t_max_c,
+                u.r AS uniquac_r,
+                u.q AS uniquac_q
+            FROM molecules m
+            LEFT JOIN antoine_constants a ON a.molecule_id = m.id
+            LEFT JOIN uniquac_parameters u ON u.molecule_id = m.id
+            WHERE lower(trim(m.name)) = lower(trim(?))
+            """,
+            (name,),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        connection.close()
+
+
+def normalize_molecule_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    normalized["name"] = str(payload["name"]).strip()
+    normalized["formula"] = str(payload["formula"]).strip()
+    return normalized
+
+
 def create_molecule(payload: dict[str, Any]) -> dict[str, Any]:
+    payload = normalize_molecule_payload(payload)
+    existing = get_molecule_by_name(payload["name"])
+    if existing:
+        raise DuplicateMoleculeNameError(f"Molecule '{payload['name']}' already exists.")
+
     connection = get_connection()
     try:
         cursor = connection.execute(
@@ -225,6 +302,11 @@ def create_molecule(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def update_molecule(molecule_id: int, payload: dict[str, Any]) -> dict[str, Any] | None:
+    payload = normalize_molecule_payload(payload)
+    existing = get_molecule_by_name(payload["name"])
+    if existing and existing["id"] != molecule_id:
+        raise DuplicateMoleculeNameError(f"Molecule '{payload['name']}' already exists.")
+
     connection = get_connection()
     try:
         connection.execute(

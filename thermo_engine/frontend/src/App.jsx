@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router-dom";
 import { api } from "./api/client";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
+import { defaultComponents } from "./data/defaultComponents";
 import AntoinePage from "./pages/AntoinePage";
 import DashboardPage from "./pages/DashboardPage";
 import GraphsPage from "./pages/GraphsPage";
@@ -21,14 +22,17 @@ export default function App() {
   }, [darkMode]);
 
   async function reloadComponents() {
-    const data = await api("/components");
-    setComponents(data);
+    try {
+      const data = await api("/components");
+      setComponents(data);
+    } catch (error) {
+      console.error("Falling back to local component catalog:", error);
+      setComponents(defaultComponents);
+    }
   }
 
   useEffect(() => {
-    reloadComponents().catch((error) => {
-      console.error(error);
-    });
+    reloadComponents();
   }, []);
 
   return (
@@ -51,4 +55,3 @@ export default function App() {
     </div>
   );
 }
-
